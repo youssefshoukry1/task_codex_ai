@@ -61,6 +61,15 @@ const seminarRoomImages = [
   "/img/services4/notes.png",
 ];
 
+const loaderImages = [
+  "/img/sevices2/4.jpg",
+  "/img/sevices2/5.jpg",
+  "/img/sevices2/6.jpg",
+  "/img/sevices2/Mitarbeitermotivation.jpg",
+  "/img/sevices2/Einzelberatung.jpg",
+  "/img/sevices2/Seminarraum_Diesel8.jpg",
+];
+
 function loadScript(source) {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
@@ -114,6 +123,10 @@ function populateTemplate(template) {
     const parts = all("span", logo);
     setText(parts[0], "HERZSPRACHE®");
     setText(parts[1], "BY BRITTA MARBS");
+  });
+  all(".mxd-loader__images img").forEach((image, index) => {
+    image.src = loaderImages[index % loaderImages.length];
+    image.alt = "Herzsprache®";
   });
   const menuCaption = one(".mxd-menu__caption p");
   if (menuCaption) menuCaption.innerHTML = "Von Mensch zu Mensch<br>mit Herzsprache®";
