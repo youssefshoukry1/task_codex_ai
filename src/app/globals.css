@@ -97,6 +97,8 @@ body {
    animation spans created by the template script. */
 :root[color-scheme="light"] .azurio-portfolio #contact .footer-nav-v01__item a,
 :root[color-scheme="light"] .azurio-portfolio #contact .footer-nav-v01__item a *,
+:root[color-scheme="light"] .azurio-portfolio #contact .footer-nav-v01 > li > a,
+:root[color-scheme="light"] .azurio-portfolio #contact .footer-nav-v01 > li > a *,
 :root[color-scheme="light"] .azurio-portfolio #contact .footer-nav-v01__item a::before,
 :root[color-scheme="light"] .azurio-portfolio #contact .footer-nav-v01__item a::after {
   color: #000 !important;
@@ -104,6 +106,8 @@ body {
 
 :root[color-scheme="dark"] .azurio-portfolio #contact .footer-nav-v01__item a,
 :root[color-scheme="dark"] .azurio-portfolio #contact .footer-nav-v01__item a *,
+:root[color-scheme="dark"] .azurio-portfolio #contact .footer-nav-v01 > li > a,
+:root[color-scheme="dark"] .azurio-portfolio #contact .footer-nav-v01 > li > a *,
 :root[color-scheme="dark"] .azurio-portfolio #contact .footer-nav-v01__item a::before,
 :root[color-scheme="dark"] .azurio-portfolio #contact .footer-nav-v01__item a::after {
   color: #fff !important;
