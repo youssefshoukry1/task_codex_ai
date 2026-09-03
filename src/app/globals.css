@@ -3,6 +3,15 @@ body {
   min-height: 100%;
 }
 
+/* The page template uses Phosphor for its icon markup. Keep it local. */
+@font-face {
+  font-family: "Phosphor";
+  src: url("/fonts/Phosphor/Phosphor.woff2") format("woff2");
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+}
+
 body {
   margin: 0;
 }

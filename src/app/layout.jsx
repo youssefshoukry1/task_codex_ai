@@ -16,6 +16,13 @@ export default function RootLayout({ children }) {
         <link rel="stylesheet" href="/css/loader.css" />
         <link rel="stylesheet" href="/css/plugins.css" />
         <link rel="stylesheet" href="/css/main.css" />
+        <link
+          rel="preload"
+          href="/fonts/Phosphor/Phosphor.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
         <meta
           name="theme-color"
           media="(prefers-color-scheme: light)"
