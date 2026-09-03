@@ -1,0 +1,127 @@
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+.azurio-portfolio .mxd-divider__image.responsive-divider-image {
+  height: clamp(28rem, 74.667vw, 93rem);
+}
+
+.azurio-portfolio .mxd-divider__image.responsive-divider-image > img {
+  display: block;
+  width: 100% !important;
+  max-width: none;
+  height: 100% !important;
+  object-fit: cover;
+  object-position: center;
+}
+
+/*
+ * The original template sizes these two labels for its short demo names.
+ * The live labels are longer, so their size must be based on the viewport
+ * and constrained by the available grid cell.
+ */
+.azurio-portfolio .hero-10-headline__wrap {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+}
+
+.azurio-portfolio .hero-10-headline__wrap h1 {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  font-size: clamp(4.2rem, 11.75vw, 19rem);
+  line-height: 0.82;
+  letter-spacing: clamp(-0.35rem, -0.22vw, -0.08rem);
+}
+
+.azurio-portfolio .hero-10-headline__content,
+.azurio-portfolio .hero-10-headline__content > .loading-chars {
+  display: block;
+  max-width: 100%;
+}
+
+.azurio-portfolio .hero-10-headline__content > .loading-chars {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+/* Keep every footer block within its grid column at narrow widths. */
+.azurio-portfolio #contact .mxd-block,
+.azurio-portfolio #contact .mxd-footer__footer-blocks,
+.azurio-portfolio #contact .footer-blocks__column,
+.azurio-portfolio #contact .footer-blocks__data,
+.azurio-portfolio #contact .footer-blocks__socials {
+  min-width: 0;
+}
+
+.azurio-portfolio #contact .footer-data,
+.azurio-portfolio #contact .footer-data a,
+.azurio-portfolio #contact .footer-data span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.azurio-portfolio #contact .fw-mark__content {
+  width: 100%;
+  max-width: 100%;
+  font-size: clamp(3.3rem, 13.4cqw, 19rem);
+  line-height: 0.78;
+}
+
+.azurio-portfolio #contact .fw-mark__content span {
+  max-width: 100%;
+  line-height: 0.78;
+  letter-spacing: -0.04em;
+}
+
+:root[color-scheme="light"] .azurio-portfolio #contact .fw-mark__content,
+:root[color-scheme="light"] .azurio-portfolio #contact .fw-mark__content span {
+  color: #000;
+}
+
+:root[color-scheme="dark"] .azurio-portfolio #contact .fw-mark__content,
+:root[color-scheme="dark"] .azurio-portfolio #contact .fw-mark__content span {
+  color: #fff;
+}
+
+/* The template gives footer links its accent colour. Keep the links readable
+   by explicitly matching the active colour scheme, including split-text
+   animation spans created by the template script. */
+:root[color-scheme="light"] .azurio-portfolio #contact .footer-nav-v01__item a,
+:root[color-scheme="light"] .azurio-portfolio #contact .footer-nav-v01__item a *,
+:root[color-scheme="light"] .azurio-portfolio #contact .footer-nav-v01__item a::before,
+:root[color-scheme="light"] .azurio-portfolio #contact .footer-nav-v01__item a::after {
+  color: #000 !important;
+}
+
+:root[color-scheme="dark"] .azurio-portfolio #contact .footer-nav-v01__item a,
+:root[color-scheme="dark"] .azurio-portfolio #contact .footer-nav-v01__item a *,
+:root[color-scheme="dark"] .azurio-portfolio #contact .footer-nav-v01__item a::before,
+:root[color-scheme="dark"] .azurio-portfolio #contact .footer-nav-v01__item a::after {
+  color: #fff !important;
+}
+
+/* Five navigation items have too little room for the template's one-line row
+   between tablet and desktop. A two-column grid removes that overflow. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .azurio-portfolio #contact .footer-nav-v01 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.2rem 2rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .azurio-portfolio #contact .footer-nav-v01 {
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+  }
+}
