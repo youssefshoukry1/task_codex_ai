@@ -663,14 +663,14 @@ function mxdViewportHeight() {
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty("--vh", `${vh}px`);
   }
-  setVH();
+  setVH(); 
   window.addEventListener("resize", setVH);
   window.addEventListener("orientationchange", setVH);
 }
 // --------------------------------------------- //
 // Base - Viewport Height Detection End
 // --------------------------------------------- //
-
+ 
 // --------------------------------------------- //
 // Base - Menu & Hamburger Start
 // --------------------------------------------- //
