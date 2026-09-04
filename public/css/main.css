@@ -20959,3 +20959,15 @@ html[data-performance-mode="constrained"] .mxd-perspective-list__inner {
             backface-visibility: hidden;
   }
 }
+
+html[data-performance-mode="reduced-motion"] *,
+html[data-performance-mode="reduced-motion"] *::before,
+html[data-performance-mode="reduced-motion"] *::after {
+  -webkit-animation-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+  -webkit-animation-iteration-count: 1 !important;
+          animation-iteration-count: 1 !important;
+  -webkit-transition-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

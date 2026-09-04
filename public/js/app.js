@@ -212,9 +212,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const lenis = new Lenis({
     autoRaf: false,
-    smoothWheel: true,
+    smoothWheel: !scrollProfile.prefersReducedMotion,
     syncTouch: false,
-    lerp: scrollProfile.mode === "constrained" ? 0.14 : 0.1,
+    lerp: scrollProfile.prefersReducedMotion
+      ? 1
+      : scrollProfile.mode === "constrained"
+        ? 0.14
+        : 0.1,
   });
   let scrollUpdatePending = false;
   lenis.on("scroll", () => {
