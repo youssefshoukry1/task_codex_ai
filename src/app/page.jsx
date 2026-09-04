@@ -24,10 +24,10 @@ const serviceItems = [
 ];
 
 const serviceImages = [
-  "/img/services/service-1.jpg",
-  "/img/services/service-2.jpg",
-  "/img/services/service-3.jpg",
-  "/img/services/service-4.jpg",
+  "/img/services/service-1.webp",
+  "/img/services/service-2.webp",
+  "/img/services/service-3.webp",
+  "/img/services/service-4.webp",
 ];
 
 const journeyItems = [
@@ -42,14 +42,14 @@ const journeyItems = [
 ];
 
 const journeyImages = {
-  "Kompetenzen erweitern": "/img/services3/Kompetenzen erweitern.jpg",
-  "Wirkungsvoll kommunizieren": "/img/services3/Wirkungsvoll kommunizieren.jpg",
-  "Mitarbeitende motivieren": "/img/services3/Mitarbeitende motivieren.jpg",
-  "Leadership 4.0": "/img/services3/Leadership 4.0.jpg",
-  "Wirtschaft & Wirkung": "/img/services3/Wirtschaft & Wirkung.jpg",
-  Motivationswissenschaft: "/img/services3/Motivationswissenschaft.jpg",
-  "Interaktive Formate": "/img/services3/Interaktive Formate.jpg",
-  "Individuelle Umsetzung": "/img/services3/Individuelle Umsetzung.jpg",
+  "Kompetenzen erweitern": "/img/services3/Kompetenzen erweitern.webp",
+  "Wirkungsvoll kommunizieren": "/img/services3/Wirkungsvoll kommunizieren.webp",
+  "Mitarbeitende motivieren": "/img/services3/Mitarbeitende motivieren.webp",
+  "Leadership 4.0": "/img/services3/Leadership 4.0.webp",
+  "Wirtschaft & Wirkung": "/img/services3/Wirtschaft & Wirkung.webp",
+  Motivationswissenschaft: "/img/services3/Motivationswissenschaft.webp",
+  "Interaktive Formate": "/img/services3/Interaktive Formate.webp",
+  "Individuelle Umsetzung": "/img/services3/Individuelle Umsetzung.webp",
 };
 
 const seminarRoomImages = [
@@ -62,12 +62,12 @@ const seminarRoomImages = [
 ];
 
 const loaderImages = [
-  "/img/sevices2/4.jpg",
-  "/img/sevices2/5.jpg",
-  "/img/sevices2/6.jpg",
-  "/img/sevices2/Mitarbeitermotivation.jpg",
-  "/img/sevices2/Einzelberatung.jpg",
-  "/img/sevices2/Seminarraum_Diesel8.jpg",
+  "/img/sevices2/4.webp",
+  "/img/sevices2/5.webp",
+  "/img/sevices2/6.webp",
+  "/img/sevices2/Mitarbeitermotivation.webp",
+  "/img/sevices2/Einzelberatung.webp",
+  "/img/sevices2/Seminarraum_Diesel8.webp",
 ];
 
 function loadScript(source) {
@@ -194,7 +194,7 @@ function populateTemplate(template) {
     heroDivider.classList.add("responsive-divider-image");
     const image = template.createElement("img");
     image.className = "parallax-img";
-    image.src = "/img/sevices2/4.jpg";
+    image.src = "/img/sevices2/4.webp";
     image.alt = "Herzsprache®";
     heroDivider.replaceChildren(image);
   }
@@ -230,9 +230,9 @@ function populateTemplate(template) {
       setText(title, promotionTitles[index]);
     });
     const promotionImages = [
-      "/img/sevices2/Mitarbeitermotivation.jpg",
-      "/img/sevices2/Einzelberatung.jpg",
-      "/img/sevices2/Seminarraum_Diesel8.jpg",
+      "/img/sevices2/Mitarbeitermotivation.webp",
+      "/img/sevices2/Einzelberatung.webp",
+      "/img/sevices2/Seminarraum_Diesel8.webp",
     ];
     all(".images__img", promotions).forEach((image, index) => {
       image.src = promotionImages[index];
@@ -287,7 +287,7 @@ function populateTemplate(template) {
     servicesDivider.classList.add("responsive-divider-image");
     const image = template.createElement("img");
     image.className = "parallax-img";
-    image.src = "/img/sevices2/6.jpg";
+    image.src = "/img/sevices2/6.webp";
     image.alt = "Herzsprache® Leistungen";
     servicesDivider.replaceChildren(image);
   }
