@@ -65,16 +65,175 @@
 // --------------------------------------------- //
 // Base - Inits Start
 // --------------------------------------------- //
+function getScrollPerformanceProfile() {
+  const device = deviceType();
+  const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cores = navigator.hardwareConcurrency || 4;
+  const memory = navigator.deviceMemory || 4;
+  const saveData = navigator.connection?.saveData === true;
+  const isConstrained =
+    saveData ||
+    cores <= 2 ||
+    memory <= 2 ||
+    ((device === "mobile" || device === "tablet") && (cores <= 4 || memory <= 4));
+
+  return {
+    device,
+    isTouchDevice,
+    prefersReducedMotion,
+    mode: prefersReducedMotion ? "reduced-motion" : isConstrained ? "constrained" : "standard",
+    cores,
+    memory,
+    saveData,
+  };
+}
+
+function createScrollProfiler(profile) {
+  const state = {
+    mode: profile.mode,
+    frames: 0,
+    longFrames: 0,
+    averageFrameMs: 0,
+    maxFrameMs: 0,
+    fps: 0,
+    sampleStartedAt: performance.now(),
+    lastFrameAt: 0,
+  };
+
+  return {
+    record(frameTime) {
+      if (!state.lastFrameAt) {
+        state.lastFrameAt = frameTime;
+        return;
+      }
+
+      const frameMs = frameTime - state.lastFrameAt;
+      state.lastFrameAt = frameTime;
+      if (frameMs > 1000) return;
+
+      state.frames += 1;
+      state.longFrames += frameMs > 34 ? 1 : 0;
+      state.averageFrameMs = state.averageFrameMs
+        ? state.averageFrameMs * 0.9 + frameMs * 0.1
+        : frameMs;
+      state.maxFrameMs = Math.max(state.maxFrameMs, frameMs);
+
+      if (frameTime - state.sampleStartedAt >= 2000) {
+        state.fps = state.frames / ((frameTime - state.sampleStartedAt) / 1000);
+        window.__azurioScrollProfile = { ...state };
+        state.frames = 0;
+        state.longFrames = 0;
+        state.maxFrameMs = 0;
+        state.sampleStartedAt = frameTime;
+      }
+    },
+  };
+}
+
+function getScrollRuntime() {
+  return window.__azurioScrollRuntime || { constrained: false, reducedMotion: false };
+}
+
+function adaptiveScrub(value) {
+  if (!getScrollRuntime().constrained) return value;
+  if (value === true) return 0.35;
+  if (typeof value === "number") return Math.max(value, 0.35);
+  return value;
+}
+
+const scrollPropertyCache = new WeakMap();
+
+function setScrollProperties(element, properties) {
+  if (!element) return;
+  const previous = scrollPropertyCache.get(element) || {};
+  const changed = {};
+
+  Object.entries(properties).forEach(([property, value]) => {
+    const previousValue = previous[property];
+    if (typeof value === "number" && typeof previousValue === "number" && Math.abs(value - previousValue) < 0.001) {
+      return;
+    }
+    if (value === previousValue) return;
+    changed[property] = value;
+    previous[property] = value;
+  });
+
+  if (Object.keys(changed).length) {
+    scrollPropertyCache.set(element, previous);
+    gsap.set(element, changed);
+  }
+}
+
+function isScrollAnimationVisible(element) {
+  return !getScrollRuntime().constrained || element?.dataset.scrollVisible !== "false";
+}
+
+let refreshScheduled = false;
+
+function scheduleScrollTriggerRefresh() {
+  if (refreshScheduled) return;
+  refreshScheduled = true;
+  requestAnimationFrame(() => {
+    refreshScheduled = false;
+    ScrollTrigger.refresh();
+  });
+}
+
+function observeScrollAnimationGroups() {
+  if (!("IntersectionObserver" in window)) return;
+
+  const groups = document.querySelectorAll(
+    ".mxd-hero-02, .mxd-hero-04__wrap, .mxd-cpb-list, .mxd-resume, .mxd-perspective-list, .mxd-dv-sticky-img, .mxd-flip-arrow"
+  );
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      entry.target.dataset.scrollVisible = String(entry.isIntersecting);
+    });
+  }, { rootMargin: "200px 0px" });
+
+  groups.forEach((group) => {
+    group.dataset.scrollVisible = "true";
+    observer.observe(group);
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
 
-  const lenis = new Lenis();
-  lenis.on('scroll', ScrollTrigger.update);
-  gsap.ticker.add((time) => {
-    lenis.raf(time * 1000)
+  const scrollProfile = getScrollPerformanceProfile();
+  const scrollProfiler = createScrollProfiler(scrollProfile);
+  window.__azurioPerformanceMode = scrollProfile.mode;
+  document.documentElement.dataset.performanceMode = scrollProfile.mode;
+  window.__azurioScrollRuntime = {
+    constrained: scrollProfile.mode === "constrained",
+    reducedMotion: scrollProfile.mode === "reduced-motion",
+  };
+  observeScrollAnimationGroups();
+
+  const lenis = new Lenis({
+    autoRaf: false,
+    smoothWheel: true,
+    syncTouch: false,
+    lerp: scrollProfile.mode === "constrained" ? 0.14 : 0.1,
   });
-  gsap.ticker.lagSmoothing(0);
+  let scrollUpdatePending = false;
+  lenis.on("scroll", () => {
+    scrollUpdatePending = true;
+  });
+  gsap.ticker.add((time) => {
+    if (document.hidden) return;
+    const frameTime = time * 1000;
+    scrollProfiler.record(frameTime);
+    lenis.raf(frameTime);
+    if (scrollUpdatePending) {
+      ScrollTrigger.update();
+      scrollUpdatePending = false;
+    }
+  });
+  gsap.ticker.lagSmoothing(scrollProfile.mode === "constrained" ? 500 : 0);
 
   gsap.registerPlugin(ScrollTrigger, CustomEase, SplitText, Flip, ScrollToPlugin, InertiaPlugin);
+  ScrollTrigger.config({ limitCallbacks: true, ignoreMobileResize: true });
   CustomEase.create("hop", ".87, 0, .13, 1");
   CustomEase.create("common", ".23, .65, .74, 1.09");
 
@@ -381,11 +540,11 @@ function mxdTypeAnimations() {
         trigger: char,
         start: 'top bottom',
         end: 'top 60%',
-        scrub: 2,
+        scrub: adaptiveScrub(2),
         // markers: true
       },
       opacity: 0,
-      filter: "blur(10px)",
+      filter: getScrollRuntime().constrained ? "none" : "blur(10px)",
       stagger: 0.05
     });
   });
@@ -938,7 +1097,7 @@ function mxdPin() {
         pin: pinnedSection,
         start: "bottom bottom",
         end: "+=100%",
-        scrub: true,
+        scrub: adaptiveScrub(true),
         pinSpacing: false,
         animation: gsap.to(pinContent, {
           autoAlpha: 0.3,
@@ -1232,7 +1391,7 @@ function mxdGravity() {
   }
 
   function myFunctionToRelaunch() {
-    ScrollTrigger.refresh();
+    scheduleScrollTriggerRefresh();
     const container = document.querySelector(".object-container");
     if (container) initPhysics(container);
     console.log("Function relaunched on window resize!");
@@ -1660,7 +1819,7 @@ function mxdStats() {
         trigger: statsTrigger,
         start: "top bottom",
         end: "bottom 60%",
-        scrub: true,
+        scrub: adaptiveScrub(true),
         toggleActions: 'play none none reverse',
       }
     });
@@ -1787,7 +1946,7 @@ function mxdProjectsStack() {
     window.addEventListener("resize", () => {
       baseSize = getBaseSize();
       updateClip(lastProgress);
-      ScrollTrigger.refresh();
+      scheduleScrollTriggerRefresh();
     });
 
     cards.forEach((card, index) => {
@@ -1961,9 +2120,10 @@ function mxdServicesStack() {
         trigger: cards[index + 1],
         start: "top bottom",
         end: "top top",
-        scrub: true,
+        scrub: adaptiveScrub(true),
         onUpdate: (self) => {
-          gsap.set(wrapper, {
+          if (!isScrollAnimationVisible(cards[index + 1])) return;
+          setScrollProperties(wrapper, {
             scale: 1 - self.progress * 0.15,
             opacity: 1 - self.progress,
           });
@@ -1982,9 +2142,10 @@ function mxdServicesStack() {
         trigger: card,
         start: "top bottom",
         end: "top top",
-        scrub: true,
+        scrub: adaptiveScrub(true),
         onUpdate: (self) => {
-          gsap.set(img, {
+          if (!isScrollAnimationVisible(card)) return;
+          setScrollProperties(img, {
             scale: 1.4 - self.progress * 0.4,
           });
         },
@@ -2124,9 +2285,10 @@ function mxdLandingStack() {
         trigger: cards[index + 1],
         start: "top bottom",
         end: "top top",
-        scrub: true,
+        scrub: adaptiveScrub(true),
         onUpdate: (self) => {
-          gsap.set(wrapper, {
+          if (!isScrollAnimationVisible(cards[index + 1])) return;
+          setScrollProperties(wrapper, {
             scale: 1 - self.progress * 0.15,
             opacity: 1 - self.progress,
           });
@@ -2145,9 +2307,10 @@ function mxdLandingStack() {
         trigger: card,
         start: "top bottom",
         end: "top top",
-        scrub: true,
+        scrub: adaptiveScrub(true),
         onUpdate: (self) => {
-          gsap.set(img, {
+          if (!isScrollAnimationVisible(card)) return;
+          setScrollProperties(img, {
             scale: 1.4 - self.progress * 0.4,
           });
         },
@@ -2199,7 +2362,7 @@ function mxdProjectsClip() {
             trigger: trigger,
             start: "top top",
             end: "bottom top",
-            scrub: true,
+            scrub: adaptiveScrub(true),
             // markers: true,
           },
           defaults: { ease: "none" },
@@ -2216,7 +2379,7 @@ function mxdProjectsClip() {
             trigger: trigger,
             start: "top bottom",
             end: "bottom bottom",
-            scrub: true,
+            scrub: adaptiveScrub(true),
             // markers: true,
           },
           defaults: { ease: "none" },
@@ -2233,7 +2396,7 @@ function mxdProjectsClip() {
             trigger: trigger,
             start: "top bottom",
             end: "bottom top",
-            scrub: true,
+            scrub: adaptiveScrub(true),
             // markers: true,
           },
           defaults: { ease: "none" },
@@ -2255,7 +2418,7 @@ function mxdProjectsClip() {
           trigger: trigger,
           start: "top top",
           end: "bottom top",
-          scrub: true,
+          scrub: adaptiveScrub(true),
           // markers: true,
         },
         defaults: { ease: "none" },
@@ -2553,7 +2716,7 @@ function mxdDvStickyMedia() {
         trigger: section,
         start: "top top",
         end: "+=" + initialScroll,
-        scrub: 0.6,
+        scrub: adaptiveScrub(0.6),
         pin: sticky,
         pinSpacing: true,
         anticipatePin: 1,
@@ -2586,7 +2749,7 @@ function mxdDvStickyMedia() {
       ScrollTrigger.addEventListener("refresh", onRefreshHandler);
 
       window.addEventListener("resize", debounce(() => {
-        ScrollTrigger.refresh();
+        scheduleScrollTriggerRefresh();
       }, 150));
 
       ScrollTrigger.refresh();
@@ -2658,7 +2821,7 @@ mxdSlideObject.forEach((element) => {
       trigger: element,
       start: "top 70%",
       end: "bottom top",
-      scrub: true,
+      scrub: adaptiveScrub(true),
       toggleActions: 'play none none reverse',
       // markers: true,
     }
@@ -2676,7 +2839,7 @@ mxdSlideDownObj.forEach((element) => {
       trigger: element,
       start: "top 40%",
       end: "bottom top",
-      scrub: true,
+      scrub: adaptiveScrub(true),
       toggleActions: 'play none none reverse',
       markers: true,
     }
@@ -2696,7 +2859,7 @@ mxdSlideRightToLeft.forEach((element) => {
       trigger: element,
       start: "top bottom",
       end: "bottom 20%",
-      scrub: true,
+      scrub: adaptiveScrub(true),
       toggleActions: 'play none none reverse',
       // markers: true,
     }
@@ -2716,7 +2879,7 @@ mxdSlideLeftToRight.forEach((element) => {
       trigger: element,
       start: "top bottom",
       end: "bottom 20%",
-      scrub: true,
+      scrub: adaptiveScrub(true),
       toggleActions: 'play none none reverse',
       // markers: true,
     }
@@ -2734,8 +2897,8 @@ imageContainer.forEach((element) => {
       start: "top bottom",
       end: "top 50%",
       scrub: {
-        scrub: true, 
-        ease: "none" 
+        scrub: adaptiveScrub(true),
+        ease: "none"
       },
       // markers: true
     },
@@ -2761,7 +2924,7 @@ animSlideDownWraps.forEach((animSlideDownWrap) => {
       start: "top 90%",
       end: "bottom 70%",
       // markers: true,
-      scrub: 1,
+      scrub: adaptiveScrub(1),
       toggleActions: 'play none none reverse',
     }
   });
@@ -2781,7 +2944,7 @@ if (!animSlideUpWraps) {
         start: "top 90%",
         end: "top 70%",
         // markers: true,
-        scrub: 1,
+        scrub: adaptiveScrub(1),
         toggleActions: 'play none none reverse',
       }
     });
@@ -2832,7 +2995,7 @@ animateClipIn.forEach((element) => {
       start: "top 90%",
       end: "bottom 70%",
       // markers: true,
-      scrub: 1,
+      scrub: adaptiveScrub(1),
       toggleActions: 'play none none reverse',
     }
   });
@@ -2940,18 +3103,18 @@ function mxdPerspectiveList() {
       gsap.set(inner, {
         rotateX: 0,
         opacity: 1,
-        filter: "blur(0px)",
+        filter: getScrollRuntime().constrained ? "none" : "blur(0px)",
       });
       gsap.to(inner, {
         rotateX: 30,
         opacity: 0.3,
-        filter: "blur(4px)",
+        filter: getScrollRuntime().constrained ? "none" : "blur(4px)",
         ease: "none",
         scrollTrigger: {
           trigger: item,
           start: "5% top",
           end: "bottom 40%",
-          scrub: 0.6,
+          scrub: adaptiveScrub(0.6),
         },
       });
     });
@@ -3137,7 +3300,7 @@ function mxdFlipArrowOnScroll() {
       trigger: wrapper,
       start: "top 80%",
       end: "top 10%",
-      scrub: true,
+      scrub: adaptiveScrub(true),
       onUpdate: (self) => {
         const p = self.progress;
 
@@ -3250,7 +3413,7 @@ function mxdHeroVideoScale() {
         endTrigger: wrappers[wrappers.length - 1],
         end: "top center",
         // scrub: 0.25,
-        scrub: 0.55
+        scrub: adaptiveScrub(0.55)
       }
     });
     wrappers.forEach((el, i) => {
@@ -3430,8 +3593,9 @@ function mxdHero3dImages() {
     end: `+=${window.innerHeight * 10}px`,
     pin: true,
     pinSpacing: true,
-    scrub: 1,
+    scrub: adaptiveScrub(1),
     onUpdate: (self) => {
+      if (!isScrollAnimationVisible(container)) return;
       const progress = self.progress;
 
       images.forEach((img, index) => {
@@ -3452,7 +3616,7 @@ function mxdHero3dImages() {
         const xValue = gsap.utils.interpolate(start.x, end.x, imageProgress);
         const yValue = gsap.utils.interpolate(start.y, end.y, imageProgress);
 
-        gsap.set(img, {
+        setScrollProperties(img, {
           z: zValue,
           scale: scaleValue,
           x: xValue,
@@ -3620,7 +3784,7 @@ function mxdHeroHorizontal() {
     trigger: stickySection,
     start: "top top",
     end: () => `+=${window.innerHeight * (slideCount - 0.5)}`,
-    scrub: true,
+    scrub: adaptiveScrub(true),
     pin: true,
     pinSpacing: true,
     invalidateOnRefresh: true,
@@ -3631,6 +3795,7 @@ function mxdHeroHorizontal() {
     },
 
     onUpdate: (self) => {
+      if (!isScrollAnimationVisible(stickySection)) return;
       const sliderWidth = slider.offsetWidth;
       const totalMove = slidesContainer.scrollWidth - sliderWidth;
 
@@ -3638,7 +3803,7 @@ function mxdHeroHorizontal() {
       const mainMove = progress * totalMove;
 
       // Move slides container
-      gsap.set(slidesContainer, { x: -mainMove });
+      setScrollProperties(slidesContainer, { x: -mainMove });
 
       const rawIndex = mainMove / sliderWidth;
       const baseSlide = Math.floor(rawIndex);
@@ -3790,4 +3955,3 @@ function mxdHeroTyped() {
 // --------------------------------------------- //
 // Hero Typed.js Plugin Settings - About Me Page End
 // --------------------------------------------- //
-
