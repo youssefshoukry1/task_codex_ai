@@ -132,7 +132,16 @@ function createScrollProfiler(profile) {
 }
 
 function getScrollRuntime() {
-  return window.__azurioScrollRuntime || { constrained: false, reducedMotion: false };
+  if (!window.__azurioScrollRuntime) {
+    const profile = getScrollPerformanceProfile();
+    window.__azurioPerformanceMode = profile.mode;
+    document.documentElement.dataset.performanceMode = profile.mode;
+    window.__azurioScrollRuntime = {
+      constrained: profile.mode === "constrained",
+      reducedMotion: profile.mode === "reduced-motion",
+    };
+  }
+  return window.__azurioScrollRuntime;
 }
 
 function adaptiveScrub(value) {
@@ -198,6 +207,60 @@ function observeScrollAnimationGroups() {
   });
 }
 
+function observeScrollTriggerGroups() {
+  const runtime = getScrollRuntime();
+  if (!runtime.constrained || !("IntersectionObserver" in window)) return;
+
+  const sections = document.querySelectorAll(".mxd-section, .mxd-hero-02, .mxd-hero-04__wrap");
+  const triggersBySection = new Map();
+
+  ScrollTrigger.getAll().forEach((trigger) => {
+    const section = trigger.trigger?.closest?.(".mxd-section, .mxd-hero-02, .mxd-hero-04__wrap");
+    if (!section) return;
+    const sectionTriggers = triggersBySection.get(section) || [];
+    sectionTriggers.push(trigger);
+    triggersBySection.set(section, sectionTriggers);
+  });
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      const sectionTriggers = triggersBySection.get(entry.target);
+      if (!sectionTriggers) return;
+      sectionTriggers.forEach((trigger) => {
+        if (entry.isIntersecting) {
+          trigger.enable(false, false);
+        } else {
+          trigger.disable(false, false);
+        }
+      });
+    });
+  }, { rootMargin: "160px 0px" });
+
+  sections.forEach((section) => observer.observe(section));
+}
+
+function pauseOffscreenVideos() {
+  if (!getScrollRuntime().constrained || !("IntersectionObserver" in window)) return;
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      const video = entry.target;
+      if (entry.isIntersecting) {
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    });
+  }, { rootMargin: "200px 0px" });
+
+  document.querySelectorAll("video").forEach((video) => {
+    if (video.closest(".mxd-hero, [class*='hero-']")) return;
+    video.preload = "metadata";
+    video.pause();
+    observer.observe(video);
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
 
   const scrollProfile = getScrollPerformanceProfile();
@@ -251,32 +314,40 @@ document.addEventListener("DOMContentLoaded", () => {
   document.fonts.ready.then(() => {
     mxdNavigation = mxdMenu(lenis);
     mxdTypeAnimations();
+    requestAnimationFrame(observeScrollTriggerGroups);
   });
 
   // hero sections
   mxdHeroVideoScale();
   mxdHeroVideoSwap();
   mxdHero3dImages();
-  mxdHeroInertia();
-  mxdHeroHorizontal();
+  if (!scrollProfile.constrained) {
+    mxdHeroInertia();
+    mxdHeroHorizontal();
+  }
   
   mxdHeroTyped();
   // features
-  mxdBlur();
-  mxdProjectsStack();
+  if (!scrollProfile.constrained) {
+    mxdBlur();
+    mxdProjectsStack();
+  }
   mxdServicesStack();
-  mxdLandingStack();
-  mxdProjectsClip();
-  mxdDvStickyMedia();
-  mxdDvStickyCaption();
+  if (!scrollProfile.constrained) {
+    mxdLandingStack();
+    mxdProjectsClip();
+    mxdDvStickyMedia();
+    mxdDvStickyCaption();
+  }
   mxdPin();
   mxdToTop();
   mxdSmoothScroll();
-  mxdGravity();
+  if (!scrollProfile.constrained) mxdGravity();
   mxdStats();
-  mxdPerspectiveList();
+  if (!scrollProfile.constrained) mxdPerspectiveList();
   mxdViewportHeight();
   mxdColorSwitcher();
+  pauseOffscreenVideos();
   // desktop only
   if (deviceType() === "desktop") {
     mxdCursor();
@@ -535,22 +606,39 @@ function pageAppearance() {
 // Base - SplitText Animations Start
 // --------------------------------------------- //
 function mxdTypeAnimations() {
+  const constrained = getScrollRuntime().constrained;
   // blured text reveal
   const splitTypes = document.querySelectorAll(".reveal-type");
   splitTypes.forEach((char,i) => {
-    const text = new SplitType(char, { types: 'words, chars' });
-    gsap.from(text.chars, {
-      scrollTrigger: {
-        trigger: char,
-        start: 'top bottom',
-        end: 'top 60%',
-        scrub: adaptiveScrub(2),
-        // markers: true
-      },
+    const text = new SplitType(char, { types: constrained ? "words" : "words, chars" });
+    const targets = constrained ? text.words : text.chars;
+    const animation = {
       opacity: 0,
-      filter: getScrollRuntime().constrained ? "none" : "blur(10px)",
-      stagger: 0.05
-    });
+      filter: constrained ? "none" : "blur(10px)",
+      stagger: constrained ? 0 : 0.05
+    };
+    if (constrained) {
+      gsap.from(targets, {
+        ...animation,
+        duration: 0.45,
+        ease: "power2.out",
+        scrollTrigger: {
+          trigger: char,
+          start: "top 85%",
+          toggleActions: "play none none none",
+        },
+      });
+    } else {
+      gsap.from(targets, {
+        ...animation,
+        scrollTrigger: {
+          trigger: char,
+          start: "top bottom",
+          end: "top 60%",
+          scrub: adaptiveScrub(2),
+        },
+      });
+    }
   });
   // split lines text
   document.querySelectorAll(".mxd-split-lines").forEach((revealLines) => {
@@ -608,27 +696,28 @@ function mxdTypeAnimations() {
   // animated chars
   document.querySelectorAll(".anim-uni-chars").forEach((animChars) => {
     SplitText.create(animChars, {
-      type: "chars, words",
+      type: constrained ? "words" : "chars, words",
       charsClass: "char",
-      mask: "chars",
+      mask: constrained ? "words" : "chars",
       smartWrap: true,
       aria: "none",
       onSplit: (self) => {
+        const targets = constrained ? self.words : self.chars;
         gsap.timeline({
           scrollTrigger: {
             trigger: animChars,
             start: "top bottom",
             end: "top 80%",
-            toggleActions: "none play none reset",
+            toggleActions: constrained ? "play none none none" : "none play none reset",
             ease: "custom",
             // markers: true
           },
-        }).from(self.chars, {
+        }).from(targets, {
           yPercent: 100,
           autoAlpha: 0,
           duration: 0.6,
           stagger: {
-            amount: 0.3,
+            amount: constrained ? 0 : 0.3,
           }
         });
       },
@@ -1041,13 +1130,20 @@ function mxdCursor() {
 // --------------------------------------------- //
 // Global Effect - Header Scroll Behavior Start
 // --------------------------------------------- //
-$(window).on("scroll", function() {
-  if($(window).scrollTop() > 10) {
-      $(".mxd-header").addClass("is-hidden");
-  } else {
-    $(".mxd-header").removeClass("is-hidden");
-  }
-});
+let headerScrollScheduled = false;
+let headerIsHidden = false;
+
+window.addEventListener("scroll", () => {
+  if (headerScrollScheduled) return;
+  headerScrollScheduled = true;
+  requestAnimationFrame(() => {
+    headerScrollScheduled = false;
+    const shouldHideHeader = window.scrollY > 10;
+    if (shouldHideHeader === headerIsHidden) return;
+    headerIsHidden = shouldHideHeader;
+    document.querySelector(".mxd-header")?.classList.toggle("is-hidden", shouldHideHeader);
+  });
+}, { passive: true });
 // --------------------------------------------- //
 // Global Effect - Header Scroll Behavior End
 // --------------------------------------------- //
@@ -2440,6 +2536,7 @@ function mxdProjectsClip() {
 // Marquee - Two Lines Start
 // --------------------------------------------- //
 const initMarquees = () => {
+  if (getScrollRuntime().constrained) return;
   const items = [...document.querySelectorAll(".marquee--gsap")];
   if (items) {
     const marqueeObject = {
@@ -2503,6 +2600,7 @@ initMarquees();
 // Marquee - One Line To Right Start
 // --------------------------------------------- //
 const initMarquee = () => {
+  if (getScrollRuntime().constrained) return;
   const items = [...document.querySelectorAll(".marquee-right--gsap")];
   if (items) {
     const marqueeObject = {
@@ -2557,6 +2655,7 @@ initMarquee();
 // Marquee - One Line To Left Start
 // --------------------------------------------- //
 const initMarqueeLeft = () => {
+  if (getScrollRuntime().constrained) return;
   const items = [...document.querySelectorAll(".marquee-left--gsap")];
   if (items) {
     const marqueeObject = {
@@ -3074,21 +3173,23 @@ if(document.querySelector(".animate-card-4")) {
 const images = document.querySelectorAll(".parallax-img");
 const imagesSmall = document.querySelectorAll(".parallax-img-small");
 const video = document.querySelectorAll(".parallax-video");
-new Ukiyo(images,{
-  scale: 1.4,
-  speed: 1.5,
-  externalRAF: false,
-});
-new Ukiyo(imagesSmall,{
-  scale: 1.2,
-  speed: 1.5,
-  externalRAF: false
-});
-new Ukiyo(video,{
-  scale: 1.4,
-  speed: 1.5,
-  externalRAF: false
-});
+if (!getScrollRuntime().constrained) {
+  new Ukiyo(images,{
+    scale: 1.4,
+    speed: 1.5,
+    externalRAF: false,
+  });
+  new Ukiyo(imagesSmall,{
+    scale: 1.2,
+    speed: 1.5,
+    externalRAF: false
+  });
+  new Ukiyo(video,{
+    scale: 1.4,
+    speed: 1.5,
+    externalRAF: false
+  });
+}
 // --------------------------------------------- //
 // Parallax - Ukiyo Images & Video End
 // --------------------------------------------- //
